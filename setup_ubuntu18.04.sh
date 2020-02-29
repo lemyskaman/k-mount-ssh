@@ -7,11 +7,11 @@
 
 echo "giving executable permisions on kmountssh"
 sudo chmod +x kmountssh
+CURRENT_PATH=$(pwd -LP)
 
-echo "atemping to create the main folder were to mount remote directories at ~/kmountssh_computers"
-FILE="/home/kaman/kmountssh_computers"
-if [ -d "$FILE" ]; then
-    echo "the folder $FILE already exists"
+FILE="/usr/bin/kmountssh"
+if [ -L "$FILE" ]; then
+    echo "the softlink already exists"
 else 
-	mkdir $FILE
+	sudo ln -s $CURRENT_PATH/kmountssh $FILE
 fi
