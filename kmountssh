@@ -1,0 +1,351 @@
+#!/bin/bash
+#by lemys lopez lemyskaman@gmail.com
+
+show_help(){
+	echo ""
+	echo ""
+	echo "sshf_mount [ option=value ... ]"
+	echo ""
+	echo "all param with (*) are mandatory"
+	echo "Options:"
+	echo " -h,   --host                *The sshf server ip or hostname"
+    echo "                             to connect with."
+	echo ""
+    echo " -p,   --port                *The sshf server port."
+	echo ""
+    echo " -u,   --u                    Server username, consider that"
+    echo "                             if its null a username/password"
+    echo "                             question will be prompt."
+	echo ""
+    echo " -P,   --Password             Username's password, consider "
+    echo "                             that if its null only a password"
+    echo "                             question will be prompt."
+	echo ""
+    echo " -t,  --target               *Path on the remote server to"
+    echo "                             to use as initial route."
+	echo ""
+    echo " -m,  --mount_point          *Path on the local computer to "
+    echo "                             mount the remote path."
+    echo ""
+    echo " -S,  --full_params_string    All params in one string using"
+    echo "                             the next format:"
+    echo "     [user]:[password]@[host]:[port]:[target] [mount_point]"
+    echo ""
+    echo " -Sf, --S_string_file         A text file with a list of     "
+    echo "                             conection params using the above"
+    echo "                             params format."
+    echo "                             If used this option will display"
+    echo "                             a integer indexed list of"
+    echo "                             posible conections acording the"
+    echo "                             ones in the file, asking for "
+    echo "                             one to be used."
+    echo "                             This option can also be used "
+    echo "                             with the one below, to pre selec"
+    echo "                             a conection params string."
+    echo ""
+    echo " -Sfo,--default_connection    Pre selected value to use just"
+    echo "                             after an option that display"
+    echo "                             a list and ask for a value"
+    echo "                             (like the above option)."
+    echo ""
+    echo "      --help                 Will show this guide"
+	echo ""
+	echo "this script depends of: ssh sshfs and zenity to gui display"
+	return 0
+}
+
+#settign the param vars
+for i in "$@"
+do
+case $i in
+    -help|--help)
+    show_help
+    return 0
+    shift # past argument=value
+    ;;
+    -h=*|--host=*)
+    HOST="${i#*=}"
+    shift # past arg
+    ;;
+    -P=*|--password=*)
+    PASSWORD="${i#*=}"
+    shift # past arg
+    ;;
+    -p=*|--port=*)
+    PORT="${i#*=}"
+    shift # past argument=value
+    ;;
+    -u=*|--user=*)
+    REMOTE_USER="${i#*=}"
+    shift # past argument=value
+    ;;
+	-t=*|--target=*)
+    TARGET_DIR="${i#*=}"
+    shift # past argument=value
+    ;;
+	-m=*|--mount_point=*)
+    MOUNT_POINT_DIR="${i#*=}"
+    shift # past argument=value
+    ;;
+    -S=*|--full_params_string=*)
+    FULL_PARAMS_STRING="${i#*=}"
+    shift # past argument=value
+    ;;
+    -Sf=*|--S_string_file=*)
+    CONECTIONS_FILE_PATH="${i#*=}"
+    shift # past argument=value
+    ;;
+    -Sfo=*|--default_connection=*)
+    SELECTED_CONNECTION="${i#*=}"
+    shift # past argument=value
+    ;;
+    --default)
+    DEFAULT=YES
+    shift # past argument with no value
+    ;;
+    *)
+          # unknown option
+    ;;
+esac
+done
+
+
+
+
+# param $1 remote conection params strings
+# param $2 mount point dir
+split_params_from_full_string (){
+
+
+
+
+    #[user]:[password]@[host]:[port]:[target] [mount_point]
+    #IFS=' ' read -ra ITEMS <<< "$1"
+    #s_MOUNT_POINT_DIR="${ITEMS[1]}"
+    #remote_params_string="${ITEMS[0]}"
+
+    remote_params_string=$1
+    s_MOUNT_POINT_DIR=$2
+
+    echo $s_MOUNT_POINT_DIR
+    echo $remote_params_string
+
+    IFS='@' read -ra ITEMS <<< "$remote_params_string"
+    remote_credentials_string="${ITEMS[0]}"
+    remote_host_port_target_string="${ITEMS[1]}"
+
+    IFS=':' read -ra ITEMS <<< "$remote_credentials_string"
+    s_REMOTE_USER="${ITEMS[0]}"
+    s_PASSWORD="${ITEMS[1]}"
+
+    IFS=':' read -ra ITEMS <<< "$remote_host_port_target_string"
+    s_HOST="${ITEMS[0]}"
+    s_PORT="${ITEMS[1]}"
+    s_TARGET_DIR="${ITEMS[2]}"
+
+    return 1
+
+}
+
+set_params_from_splitted(){
+
+
+
+    MOUNT_POINT_DIR=$s_MOUNT_POINT_DIR
+    REMOTE_USER=$s_REMOTE_USER
+    PASSWORD=$s_PASSWORD
+    HOST=$s_HOST
+    PORT=$s_PORT
+    TARGET_DIR=$s_TARGET_DIR
+
+
+
+}
+
+
+#useful to heck if a password exit other wise propont
+user_and_password_check () {
+    echo $REMOTE_USER
+    to_return=0
+    #does we not have a user to connect on remote ?
+    if [ -z $REMOTE_USER ]; then
+        #we propont a gui box to imput user a password
+        OUTPUT=$(zenity --forms --title="Connecting to $HOST" --text="Enter Credentials" --separator="," --add-entry="Username" --add-password="Password" )
+        to_return=$?
+
+        #if enduser click acept
+        if [ $to_return -eq 0 ]; then
+            REMOTE_USER=$(awk -F, '{print $1}' <<<$OUTPUT)
+            PASSWORD=$(awk -F, '{print $2}' <<<$OUTPUT)
+        fi
+    fi
+    if [ -z $PASSWORD ]; then
+    #does we not have a password but we got a user on shell script params
+
+            #propont a gui input bux to retrive a password
+        PASSWORD=$( zenity --password --title="$REMOTE_USER@$HOST ")
+        to_return=$?
+
+
+    fi
+    if [ $to_return -gt 0 ]; then
+        message="Unable to get a user and password to connect to remote instance"
+        echo $message
+        zenity --error --text="$message"
+    fi
+
+    return $to_return
+
+}
+
+
+#mount function
+mount_remote () {
+    to_return=1
+    #check for directory to mount
+    if [ -d "$MOUNT_POINT_DIR" ];then
+        echo "atempting to mount on $MOUNT_POINT_DIR"
+	    #check if the host is already on know_host
+        ssh-keygen -F $HOST
+        if [ $? -gt 0 ];then
+            echo "First time connecting to server, adding the keys to known_hosts file"
+            ssh-keyscan -H $HOST >> ~/.ssh/known_hosts
+        fi
+
+        #mounting remote dir
+        echo $PASSWORD  | sshfs -p$PORT $REMOTE_USER@$HOST:$TARGET_DIR $MOUNT_POINT_DIR -o   password_stdin -o auto_unmount -o nonempty
+        to_return=$?
+        if [ $to_return -gt 0 ];then
+            message="sshfs failed to mount on: \n$MOUNT_POINT_DIR "
+            echo $message
+            zenity --error --text="$message"
+        fi
+
+    else
+        message="Directory to mount does not exists please run: \n\nmkdir $MOUNT_POINT_DIR"
+        echo $message
+        zenity --error --text="$message"
+    fi
+
+
+    return $to_return
+
+}
+
+explorer () {
+    #checking for installed file explorer
+	if  hash konqueror 2>/dev/null; then
+		konqueror $MOUNT_POINT_DIR &
+		return 0
+	elif  hash caja 2>/dev/null; then
+		caja $MOUNT_POINT_DIR &
+		return 0
+	elif  hash pcmanfm 2>/dev/null; then
+		pcmanfm $MOUNT_POINT_DIR &
+		return 0
+	fi
+	return 1
+
+}
+
+# param $1 the file path
+show_conections_list_from_file(){
+
+    echo "Please select an option for a conection"
+    echo ""
+
+    OPTION=1
+    while IFS= read line
+    do
+        split_params_from_full_string $line
+        echo "$OPTION) $s_HOST:$s_PORT$s_TARGET_DIR <-- $s_MOUNT_POINT_DIR  "
+        OPTION=$((OPTION+1))
+    done <"$1"
+    read -p 'Option: ' SELECTED_CONNECTION
+
+}
+
+# param $1 the file to read
+# param $2 the option to select
+set_string_from_conections_file(){
+
+    OPTION=1
+    while IFS= read line
+    do
+        echo "$line"
+
+        if [ $OPTION -eq $2 ];then
+            FULL_PARAMS_STRING="$line"
+            break
+        fi
+
+        OPTION=$((OPTION+1))
+    done <"$1"
+
+
+
+}
+
+
+
+if [[ ! -z $CONECTIONS_FILE_PATH ]];then
+
+    echo "You have chose to use params from a conection file "
+    if [[  -z $SELECTED_CONNECTION ]];then
+
+        show_conections_list_from_file $CONECTIONS_FILE_PATH
+    fi
+    set_string_from_conections_file $CONECTIONS_FILE_PATH $SELECTED_CONNECTION
+fi
+
+
+
+if [[ ! -z $FULL_PARAMS_STRING ]];then
+    echo "hay string param"
+    split_params_from_full_string $FULL_PARAMS_STRING
+    set_params_from_splitted
+fi
+
+
+
+
+
+if [ -z $HOST ] || [  -z $PORT ] || [  -z $TARGET_DIR ] || [   -z $MOUNT_POINT_DIR ] ; then
+	echo "mandatory params are nedded"
+    echo "host $HOST"
+    echo "port $PORT"
+    echo "target dir $TARGET_DIR"
+    echo "mount_oint_dir $MOUNT_POINT_DIR"
+    show_help
+else
+    mount | grep $MOUNT_POINT_DIR
+    MOUNT_STATUS=$?
+    if [ $MOUNT_STATUS -gt 0 ];then
+
+        echo $REMOTE_USER
+        echo $PASSWORD
+        echo $HOST
+        echo $PORT
+        echo $MOUNT_POINT_DIR
+        echo $TARGET_DIR
+        user_and_password_check
+
+		if [ $? -eq 0 ];then
+            mount_remote
+		    if [ $? -eq 0 ];then
+			    explorer
+                message="succes mount on: \n$MOUNT_POINT_DIR"
+                echo $message
+			    #zenity --info --text="succes mount on: \n$MOUNT_POINT_DIR"
+			    #exit 0
+            fi
+	    fi
+    else
+        message="remote directory: \n$TARGET_DIR \nalready mounted on: \n$MOUNT_POINT_DIR"
+        echo ""
+        echo $message
+        #zenity --info --text="$message"
+		#explorer
+		#xit 0
+    fi
+fi
