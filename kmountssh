@@ -4,17 +4,17 @@
 show_help(){
 	echo ""
 	echo ""
-	echo "sshf_mount [ option=value ... ]"
+	echo "kmountssh [ option=value ... ]"
 	echo ""
-	echo "all param with (*) are mandatory"
+	echo "all params with (*) are mandatory"
 	echo "Options:"
 	echo " -h,   --host                *The sshf server ip or hostname"
     echo "                             to connect with."
 	echo ""
-    echo " -p,   --port                *The sshf server port."
+    echo " -p,   --port                *The ssh server port."
 	echo ""
     echo " -u,   --u                    Server username, consider that"
-    echo "                             if its null a username/password"
+    echo "                             if  null a username/password"
     echo "                             question will be prompt."
 	echo ""
     echo " -P,   --Password             Username's password, consider "
@@ -22,28 +22,28 @@ show_help(){
     echo "                             question will be prompt."
 	echo ""
     echo " -t,  --target               *Path on the remote server to"
-    echo "                             to use as initial route."
+    echo "                             to locally mount."
 	echo ""
     echo " -m,  --mount_point          *Path on the local computer to "
     echo "                             mount the remote path."
     echo ""
     echo " -S,  --full_params_string    All params in one string using"
     echo "                             the next format:"
-    echo "     [user]:[password]@[host]:[port]:[target] [mount_point]"
     echo ""
-    echo " -Sf, --S_string_file         A text file with a list of     "
+    echo "     [user]:[password]@[host]:[port]:[target] [local_mount_point]"
+    echo ""
+    echo " -Sf, --string_list_file      A text file with a list of     "
     echo "                             conection params using the above"
     echo "                             params format."
-    echo "                             If used this option will display"
-    echo "                             a integer indexed list of"
-    echo "                             posible conections acording the"
-    echo "                             ones in the file, asking for "
-    echo "                             one to be used."
+    echo "                             When used  a integer indexed list of"
+    echo "                             posible conections will be displayed"
+    echo "                             acording the ones in the file,"
+    echo "                             asking for  one to be used."
     echo "                             This option can also be used "
-    echo "                             with the one below, to pre selec"
-    echo "                             a conection params string."
+    echo "                             with the one below (-Sfo), to "
+    echo "                             pre selec a conection params string."
     echo ""
-    echo " -Sfo,--default_connection    Pre selected value to use just"
+    echo " -Sfo,--string_list_option    Pre selected value to use just"
     echo "                             after an option that display"
     echo "                             a list and ask for a value"
     echo "                             (like the above option)."
@@ -91,11 +91,11 @@ case $i in
     FULL_PARAMS_STRING="${i#*=}"
     shift # past argument=value
     ;;
-    -Sf=*|--S_string_file=*)
+    -Sf=*|--string_list_file=*)
     CONECTIONS_FILE_PATH="${i#*=}"
     shift # past argument=value
     ;;
-    -Sfo=*|--default_connection=*)
+    -Sfo=*|--string_list_option=*)
     SELECTED_CONNECTION="${i#*=}"
     shift # past argument=value
     ;;
@@ -222,9 +222,18 @@ mount_remote () {
         fi
 
     else
-        message="Directory to mount does not exists please run: \n\nmkdir $MOUNT_POINT_DIR"
-        echo $message
-        zenity --error --text="$message"
+        echo "Directory to mount $MOUNT_POINT_DIR do not exists"
+        echo "atempting to recussively create dir $MOUNT_POINT_DIR"
+        mkdir -p $MOUNT_POINT_DIR
+        if [ $? -gt 0 ];then
+            message="Directory to mount does not exists please run: \n\nmkdir $MOUNT_POINT_DIR"
+            echo $message
+            zenity --error --text="$message"
+        else 
+            echo "$MOUNT_POINT_DIR succesfully created  "
+            echo "retriying mounting process"
+            mount_remote
+        fi
     fi
 
 
@@ -307,7 +316,9 @@ if [[ ! -z $FULL_PARAMS_STRING ]];then
 fi
 
 
-
+if [ -z "$PORT" ];then
+    PORT=22
+fi
 
 
 if [ -z $HOST ] || [  -z $PORT ] || [  -z $TARGET_DIR ] || [   -z $MOUNT_POINT_DIR ] ; then
@@ -315,19 +326,20 @@ if [ -z $HOST ] || [  -z $PORT ] || [  -z $TARGET_DIR ] || [   -z $MOUNT_POINT_D
     echo "host $HOST"
     echo "port $PORT"
     echo "target dir $TARGET_DIR"
-    echo "mount_oint_dir $MOUNT_POINT_DIR"
+    echo "mount_point_dir $MOUNT_POINT_DIR"
     show_help
 else
     mount | grep $MOUNT_POINT_DIR
     MOUNT_STATUS=$?
     if [ $MOUNT_STATUS -gt 0 ];then
 
-        echo $REMOTE_USER
-        echo $PASSWORD
-        echo $HOST
-        echo $PORT
-        echo $MOUNT_POINT_DIR
-        echo $TARGET_DIR
+#        for debugiin use only
+#        echo $REMOTE_USER
+#        echo $PASSWORD
+#        echo $HOST
+#        echo $PORT
+#        echo $MOUNT_POINT_DIR
+#        echo $TARGET_DIR
         user_and_password_check
 
 		if [ $? -eq 0 ];then
