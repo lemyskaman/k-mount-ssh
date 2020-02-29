@@ -26,6 +26,8 @@ show_help(){
 	echo ""
     echo " -m,  --mount_point          *Path on the local computer to "
     echo "                             mount the remote path."
+    echo "                             kmountssh will try to create the"
+    echo "                             directory in case it does not exists"
     echo ""
     echo " -S,  --full_params_string    All params in one string using"
     echo "                             the next format:"

@@ -5,4 +5,4 @@
 
 clear
 echo "installing dependcies"
-sudo apt-get install ssh fuse sshfs zenity sshpass
+sudo apt-get install ssh fuse sshfs zenity 
