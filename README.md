@@ -25,7 +25,7 @@ Then Run the setup script:
 	$ cd kmountssh
 	$ sh setup_ubuntu18.04.sh  
 
-The setup script will try to install the dependencies using apt and then, it will create a soft link at /usr/bin to widely get access to kmountssh command, so you need to be part of sudoers. 
+The setup script will try to install the dependencies using apt, and then it will create a soft link at /usr/bin to widely get access to kmountssh command, so you need to be part of sudoers. 
 
 ### Dependencies
 You need: 
