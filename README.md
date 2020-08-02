@@ -6,6 +6,8 @@ kmountssh is a bash script, that ease the use of the sshfs linux tool.
 
 In a common scenario you want to use sshfs to locally mount remote server paths, so you have to pass the options params and values to sshf in order to accomplish a connection and mounting.
 
+This script basically will pass some default values in case they arent given to sshfs also will handle the creation of mounting directory in case they are not existing in your file tree, also it give you the option to pass a list of connections and choose one from the list to mount
+
 ##
 
 ## Installing
@@ -44,12 +46,18 @@ You need the fallowing commands (packages):
 ## Usage
 You might run kmountssh with its params to mount a remote path, a common usage would be some thing like this if setup script was succesfull:
 	
-	$ kmountssh -h="host" -u="remoteUserName" -P="password" -t="remotePathToMount" -m="localPath"
+	$ kmountssh -h=[host] -u=[remote user] -P=[password] -t=[remote path] -m=[local path]
 
 or directly runnig the kmountssh script from the cloned or unziped project folder:
 
-	$ ./kmountssh -h="host" -u="remoteUserName" -P="password" -t="remotePathToMount" -m="localPath"
+	$ ./kmountssh -h=[host] -u=[remote user] -P=[password] -t=[remote path] -m=[local path]
 
-Remember to change the host by the remote ip or hostname, remoteUserName, password, remothePathToMount and localPath values acording your needs.
+But the most recommended way is just to use it with 2 params like:
+
+	$ kmountssh -h="[host]" -u="[remote user]"
+
+The above will use "/media/[local username]/[host]" as the path to mount the remote fileystem
+
+Remember to change the [host] by the remote ip or hostname, [remote user], [password], [remothe path] and [localPath] with values acording your needs.
 
 Also you can always use kmountssh param --help to display a detailed list of available options params.
