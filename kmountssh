@@ -11,7 +11,7 @@ show_help(){
 	echo " -h,   --host                *The sshf server ip or hostname"
     echo "                             to connect with."
 	echo ""
-    echo " -p,   --port                *The ssh server port."
+    echo " -p,   --port                The ssh server port (22 default)."
 	echo ""
     echo " -u,   --u                    Server username, consider that"
     echo "                             if  null a username/password"
@@ -21,13 +21,14 @@ show_help(){
     echo "                             that if its null only a password"
     echo "                             question will be prompt."
 	echo ""
-    echo " -t,  --target               *Path on the remote server to"
-    echo "                             to locally mount."
+    echo " -t,  --target               Path on the remote server to"
+    echo "                             to locally mount. (/ default )"
 	echo ""
-    echo " -m,  --mount_point          *Path on the local computer to "
+    echo " -m,  --mount_point          Path on the local computer to "
     echo "                             mount the remote path."
     echo "                             kmountssh will try to create the"
-    echo "                             directory in case it does not exists"
+    echo "                             directory in case it does not exists."
+    echo "                             (/media/<user>/<host> default) "
     echo ""
     echo " -S,  --full_params_string    All params in one string using"
     echo "                             the next format:"
@@ -50,7 +51,7 @@ show_help(){
     echo "                             a list and ask for a value"
     echo "                             (like the above option)."
     echo ""
-    echo "      --help                 Will show this guide"
+    echo " --help                      Will show this guide"
 	echo ""
 	echo "this script depends of: ssh sshfs and zenity to gui display"
 	return 0
@@ -120,6 +121,17 @@ fi
 if [ -z "$USER" ];then
     USER=$(whoami)
 fi
+
+if [ -z "$MOUNT_POINT_DIR" ];then
+    MOUNT_POINT_DIR=/media/$(whoami)/$HOST
+fi
+
+if [ -z "$TARGET_DIR" ];then
+    TARGET_DIR=/
+fi
+
+
+
 
 # param $1 remote conection params strings
 # param $2 mount point dir
@@ -191,7 +203,7 @@ user_and_password_check () {
     if [ -z $PASSWORD ]; then
     #does we not have a password but we got a user on shell script params
 
-            #propont a gui input bux to retrive a password
+            #show a gui input box to retrive a password
         PASSWORD=$( zenity --password --title="$REMOTE_USER@$HOST ")
         to_return=$?
 
@@ -212,7 +224,7 @@ user_and_password_check () {
 mount_remote () {
     to_return=1
     #check for directory to mount
-    if [ -d "$MOUNT_POINT_DIR" ];then
+    if [ -d "$MOUNT_POINT_DIR" ] && [ -w "$MOUNT_POINT_DIR" ];then
         echo "atempting to mount on $MOUNT_POINT_DIR"
 	    #check if the host is already on know_host
         ssh-keygen -F $HOST
@@ -225,23 +237,30 @@ mount_remote () {
         echo $PASSWORD  | sshfs -p$PORT $REMOTE_USER@$HOST:$TARGET_DIR $MOUNT_POINT_DIR -o   password_stdin -o auto_unmount -o nonempty   
         to_return=$?
         if [ $to_return -gt 0 ];then
-            message="sshfs failed to mount on: \n$MOUNT_POINT_DIR "
+            message="sshfs failed to mount on: $MOUNT_POINT_DIR "
             echo $message
             zenity --error --text="$message"
         fi
 
     else
-        echo "Directory to mount $MOUNT_POINT_DIR do not exists"
-        echo "atempting to recussively create dir $MOUNT_POINT_DIR"
+        echo "Directory to mount $MOUNT_POINT_DIR do not exists or is not Writable"
+        echo "atempting to create dir $MOUNT_POINT_DIR"
         mkdir -p $MOUNT_POINT_DIR
-        if [ $? -gt 0 ];then
-            message="Directory to mount does not exists please run: \n\nmkdir $MOUNT_POINT_DIR"
+        if [ $? -gt 0 ] ; then
+            message="cant create a dir at: $MOUNT_POINT_DIR trying  it with sudo"
             echo $message
-            zenity --error --text="$message"
-        else 
-            echo "$MOUNT_POINT_DIR succesfully created  "
-            echo "retriying mounting process"
-            mount_remote
+            sudo mkdir -p $MOUNT_POINT_DIR
+            if [ $? -gt 0 ];then
+                message="Directory to mount does not exists please run: mkdir $MOUNT_POINT_DIR"
+                echo $message
+                zenity --error --text="$message"
+            else 
+                sudo chown $(whoami) $MOUNT_POINT_DIR
+                echo "$MOUNT_POINT_DIR succesfully created  "
+                echo "retriying mounting process"
+                mount_remote
+            fi
+        
         fi
     fi
 
@@ -328,7 +347,7 @@ fi
 
 
 
-if [ -z $HOST ] || [  -z $PORT ] || [  -z $TARGET_DIR ] || [   -z $MOUNT_POINT_DIR ] ; then
+if [ -z $HOST ] || [  -z $PORT ]   ; then
 	echo "mandatory params are nedded"
     echo "host $HOST"
     echo "port $PORT"
@@ -353,14 +372,14 @@ else
             mount_remote
 		    if [ $? -eq 0 ];then
 			    explorer
-                message="succes mount on: \n$MOUNT_POINT_DIR"
+                message="succes mount on: $MOUNT_POINT_DIR"
                 echo $message
-			    #zenity --info --text="succes mount on: \n$MOUNT_POINT_DIR"
+			    #zenity --info --text="succes mount on: $MOUNT_POINT_DIR"
 			    #exit 0
             fi
 	    fi
     else
-        message="remote directory: \n$TARGET_DIR \nalready mounted on: \n$MOUNT_POINT_DIR"
+        message="remote directory: $TARGET_DIR already mounted on: $MOUNT_POINT_DIR"
         echo ""
         echo $message
         #zenity --info --text="$message"
