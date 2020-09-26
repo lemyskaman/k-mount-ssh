@@ -113,7 +113,7 @@ esac
 done
 
 
-# setting some defaults
+# setting The default values
 if [ -z "$PORT" ];then
     PORT=22
 fi
@@ -123,7 +123,7 @@ if [ -z "$USER" ];then
 fi
 
 if [ -z "$MOUNT_POINT_DIR" ];then
-    MOUNT_POINT_DIR=/media/$(whoami)/$HOST
+    MOUNT_POINT_DIR=/media/$(whoami)/$REMOTE_USER_at_$HOST
 fi
 
 if [ -z "$TARGET_DIR" ];then
