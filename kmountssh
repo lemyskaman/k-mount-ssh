@@ -123,11 +123,15 @@ if [ -z "$USER" ];then
 fi
 
 if [ -z "$MOUNT_POINT_DIR" ];then
-    MOUNT_POINT_DIR=/media/$(whoami)/$REMOTE_USER_at_$HOST
+    MOUNT_POINT_DIR=/media/$(whoami)/$REMOTE_USER"_at_"$HOST
 fi
 
 if [ -z "$TARGET_DIR" ];then
-    TARGET_DIR=/
+    if [ "$REMOTE_USER" = "root" ]; then 
+        TARGET_DIR=/
+    else
+        TARGET_DIR="/home/$REMOTE_USER/"
+    fi
 fi
 
 
