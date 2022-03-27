@@ -1,5 +1,5 @@
 # kmountssh
-A handy remote file system mounting tool
+Mount remote file system as local, A handy remote file system mounting tool
 
 ## Description
 kmountssh is a bash script, that ease the use of the sshfs linux tool. 
