@@ -113,29 +113,32 @@ esac
 done
 
 
-# setting The default values
-if [ -z "$PORT" ];then
-    PORT=22
-fi
-
-if [ -z "$USER" ];then
-    USER=$(whoami)
-fi
-
-if [ -z "$MOUNT_POINT_DIR" ];then
-    MOUNT_POINT_DIR=/media/$(whoami)/$REMOTE_USER"_at_"$HOST
-fi
-
-if [ -z "$TARGET_DIR" ];then
-    if [ "$REMOTE_USER" = "root" ]; then 
-        TARGET_DIR=/
-    else
-        TARGET_DIR="/home/$REMOTE_USER/"
+set_defaults(){
+    # setting The default values
+    if [ -z "$PORT" ];then
+        PORT=22
     fi
-fi
+
+    if [ -z "$USER" ];then
+        USER=$(whoami)
+    fi
 
 
 
+    if [ -z "$TARGET_DIR" ];then
+        if [ "$REMOTE_USER" = "root" ]; then 
+            TARGET_DIR=/
+        else
+            TARGET_DIR="/home/$REMOTE_USER/"
+        fi
+    fi
+
+    if [ -z "$MOUNT_POINT_DIR" ];then
+        MOUNT_POINT_DIR=/media/$(whoami)/$REMOTE_USER"_at_"$HOST
+        echo $MOUNT_POINT_DIR
+    fi
+}
+set_defaults
 
 # param $1 remote conection params strings
 # param $2 mount point dir
@@ -203,6 +206,8 @@ user_and_password_check () {
             REMOTE_USER=$(awk -F, '{print $1}' <<<$OUTPUT)
             PASSWORD=$(awk -F, '{print $2}' <<<$OUTPUT)
         fi
+        MOUNT_POINT_DIR=/media/$(whoami)/$REMOTE_USER"_at_"$HOST
+        echo $REMOTE_USER
     fi
     if [ -z $PASSWORD ]; then
     #does we not have a password but we got a user on shell script params
@@ -371,7 +376,6 @@ else
 #        echo $MOUNT_POINT_DIR
 #        echo $TARGET_DIR
         user_and_password_check
-
 		if [ $? -eq 0 ];then
             mount_remote
 		    if [ $? -eq 0 ];then
