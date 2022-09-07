@@ -243,7 +243,7 @@ mount_remote () {
         fi
 
         #mounting remote dir
-        echo $PASSWORD  | sshfs -p$PORT $REMOTE_USER@$HOST:$TARGET_DIR $MOUNT_POINT_DIR -o   password_stdin -o auto_unmount -o nonempty   
+        echo $PASSWORD  | sshfs -p$PORT $REMOTE_USER@$HOST:$TARGET_DIR $MOUNT_POINT_DIR -o   password_stdin -o auto_unmount #-o nonempty   
         to_return=$?
         if [ $to_return -gt 0 ];then
             message="sshfs failed to mount on: $MOUNT_POINT_DIR "
